@@ -1,0 +1,50 @@
+name: Publish DenTag v1.0.1
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'releases/v1.0.1/**'
+      - '.github/workflows/release-v1.0.1.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: dentag-v1.0.1-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Download and verify the prepared release
+        shell: bash
+        run: |
+          set -euo pipefail
+          for asset in DenTag-v1.0.1.apk DenTag-source-public-v1.0.1.zip SHA256SUMS release-notes.md; do
+            gh api --method GET "repos/$GH_REPO/contents/releases/v1.0.1/$asset" -f ref="$RELEASE_COMMIT" --jq '.content' | base64 --decode > "$asset"
+          done
+          sha256sum --check SHA256SUMS
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile('DenTag-source-public-v1.0.1.zip') as archive:
+              assert archive.testzip() is None
+              assert not any(name.endswith(('.keystore', '.jks')) or '/signing/' in name for name in archive.namelist())
+          PY
+      - name: Publish the APK and public source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v1.0.1 --repo "$GH_REPO" --json isDraft --jq '.isDraft' > draft-state.txt 2>/dev/null; then
+            if [ "$(cat draft-state.txt)" = false ]; then
+              echo 'This release is already published.'
+              exit 0
+            fi
+          else
+            gh release create v1.0.1 --repo "$GH_REPO" --draft --target "$RELEASE_COMMIT" --title 'DenTag v1.0.1' --notes-file release-notes.md
+          fi
+          gh release upload v1.0.1 DenTag-v1.0.1.apk DenTag-source-public-v1.0.1.zip SHA256SUMS --repo "$GH_REPO" --clobber
+          gh release edit v1.0.1 --repo "$GH_REPO" --draft=false --latest
