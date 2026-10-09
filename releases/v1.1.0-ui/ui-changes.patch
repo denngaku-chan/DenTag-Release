@@ -1,0 +1,118 @@
+--- a/src/jp/dengaku/dentag/MainActivity.java
++++ b/src/jp/dengaku/dentag/MainActivity.java
+@@ -2,10 +2,12 @@
+ 
+ import android.app.*;
+ import android.content.*;
++import android.content.res.ColorStateList;
+ import android.content.res.Configuration;
+ import android.database.Cursor;
+ import android.graphics.*;
+ import android.graphics.drawable.GradientDrawable;
++import android.graphics.drawable.RippleDrawable;
+ import android.net.Uri;
+ import android.os.*;
+ import android.provider.DocumentsContract;
+@@ -31,7 +33,7 @@
+     private ImageView cover;
+     private Button save, photo, remove;
+     private ProgressBar progress;
+-    private LinearLayout root;
++    private LinearLayout root, songPicker;
+     private File source;
+     private TagEngine.Song song;
+     private TagEngine.Picture picture;
+@@ -67,11 +69,15 @@
+         setContentView(root);root.requestApplyInsets();
+         LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);top.setPadding(0,dp(18),0,dp(16));
+         LinearLayout titles=vertical();TextView title=text("DenTag",30,ink);title.setTypeface(null,Typeface.BOLD);titles.addView(title);titles.addView(text("曲の情報と、ジャケットを。",12,muted));top.addView(titles,new LinearLayout.LayoutParams(0,-2,1));
+-        Button open=button("曲を選ぶ",true);open.setOnClickListener(v->confirmSwitch());top.addView(open,new LinearLayout.LayoutParams(-2,dp(50)));root.addView(top);
++        root.addView(top);
+         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+         LinearLayout content=vertical();content.setPadding(0,0,0,dp(16));scroll.addView(content);
+-        LinearLayout fileCard=vertical();fileCard.setBackground(shape(card,20));fileCard.setPadding(dp(18),dp(16),dp(18),dp(16));
+-        filename=text("まずは曲を選んでください",17,ink);filename.setTypeface(null,Typeface.BOLD);fileCard.addView(filename);gap(fileCard,6);info=text("MP3 / FLAC に対応",12,muted);fileCard.addView(info);content.addView(fileCard);gap(content,16);
++        songPicker=new LinearLayout(this);songPicker.setGravity(Gravity.CENTER_VERTICAL);songPicker.setMinimumHeight(dp(84));songPicker.setPadding(dp(18),dp(16),dp(18),dp(16));
++        songPicker.setBackground(new RippleDrawable(ColorStateList.valueOf(line),shape(card,20),shape(Color.WHITE,20)));
++        songPicker.setFocusable(true);songPicker.setContentDescription("曲を選ぶ。MP3またはFLACを開きます");songPicker.setOnClickListener(v->confirmSwitch());
++        songPicker.setAccessibilityDelegate(new View.AccessibilityDelegate(){@Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo node){super.onInitializeAccessibilityNodeInfo(host,node);node.setClassName(Button.class.getName());}});
++        LinearLayout fileText=vertical();filename=text("まずは曲を選んでください",17,ink);filename.setTypeface(null,Typeface.BOLD);filename.setMaxLines(2);filename.setEllipsize(android.text.TextUtils.TruncateAt.END);fileText.addView(filename);gap(fileText,6);info=text("タップして MP3 / FLAC を開く",12,muted);fileText.addView(info);songPicker.addView(fileText,new LinearLayout.LayoutParams(0,-2,1));
++        TextView choose=text("›",30,accent);choose.setGravity(Gravity.CENTER);choose.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);LinearLayout.LayoutParams chooseLayout=new LinearLayout.LayoutParams(dp(24),-2);chooseLayout.leftMargin=dp(12);songPicker.addView(choose,chooseLayout);content.addView(songPicker,new LinearLayout.LayoutParams(-1,-2));gap(content,16);
+         LinearLayout artCard=vertical();artCard.setGravity(Gravity.CENTER_HORIZONTAL);artCard.setPadding(dp(18),dp(20),dp(18),dp(18));artCard.setBackground(shape(card,20));
+         TextView cap=text("ジャケット",12,muted);cap.setGravity(Gravity.CENTER);artCard.addView(cap);gap(artCard,12);
+         cover=new ImageView(this);cover.setScaleType(ImageView.ScaleType.FIT_CENTER);cover.setBackground(shape(line,16));cover.setContentDescription("ジャケット画像のプレビュー");artCard.addView(cover,new LinearLayout.LayoutParams(dp(180),dp(180)));
+@@ -99,8 +105,8 @@
+     private void confirmSwitch(){if(busy)return;if(dirty&&song!=null)new AlertDialog.Builder(this).setTitle("別の曲を開きますか？").setMessage("保存していない変更は破棄されます。").setNegativeButton("キャンセル",null).setPositiveButton("曲を選ぶ",(d,w)->pickSong()).show();else pickSong();}
+     private void pickSong(){launch(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION),OPEN);}
+     private void launch(Intent intent,int code){try{startActivityForResult(intent,code);}catch(ActivityNotFoundException e){error(new IOException("ファイル選択アプリが見つかりません。"));}}
+-    private void setBusy(boolean b,String message){busy=b;for(View v:controls)v.setEnabled(!b&&((v instanceof Button&&!"song".equals(v.getTag())) || song!=null));photo.setEnabled(!b&&song!=null);remove.setEnabled(!b&&song!=null&&picture!=null);save.setEnabled(!b&&song!=null);mp3Gain.setEnabled(!b&&song!=null&&"MP3".equals(song.format));progress.setVisibility(b?View.VISIBLE:View.GONE);status.setText(message);}
+-    private void fill(){mp3Steps=0;mp3Undo=false;mp3SourceHash="";updateMp3Note();for(int i=0;i<6;i++)fields[i].setText(song.values[i]);volume.setText(song.trackGain.replaceAll("(?i)\\s*dB$", ""));gainChanged=false;filename.setText(displayName);info.setText(song.format+"  ·  "+String.format(Locale.JAPAN,"%.1f MB",source.length()/1048576.0));preview();dirty=false;}
++    private void setBusy(boolean b,String message){busy=b;songPicker.setEnabled(!b);songPicker.setAlpha(b?0.6f:1f);for(View v:controls)v.setEnabled(!b&&((v instanceof Button&&!"song".equals(v.getTag())) || song!=null));photo.setEnabled(!b&&song!=null);remove.setEnabled(!b&&song!=null&&picture!=null);save.setEnabled(!b&&song!=null);mp3Gain.setEnabled(!b&&song!=null&&"MP3".equals(song.format));progress.setVisibility(b?View.VISIBLE:View.GONE);status.setText(message);}
++    private void fill(){mp3Steps=0;mp3Undo=false;mp3SourceHash="";updateMp3Note();for(int i=0;i<6;i++)fields[i].setText(song.values[i]);volume.setText(song.trackGain.replaceAll("(?i)\\s*dB$", ""));gainChanged=false;filename.setText(displayName);info.setText(song.format+"  ·  "+String.format(Locale.JAPAN,"%.1f MB",source.length()/1048576.0)+"  ·  タップして曲を変更");songPicker.setContentDescription("曲を変更。現在の曲は "+displayName);preview();dirty=false;}
+     private void updateMp3Note(){if(mp3Note==null)return;mp3Note.setText(song!=null&&"FLAC".equals(song.format)?"MP3専用の機能です。FLACには使用できません。":mp3Undo?"保存時にMP3Gainを元に戻します。":mp3Steps!=0?String.format(Locale.JAPAN,"保存時に %+.1f dB を適用します。再エンコードは行いません。",mp3Steps*Mp3GainEngine.STEP_DB):"MP3専用・再エンコードせずに音量を変更します。");}
+     private void applyMp3Result(Intent data){if(song==null||!"MP3".equals(song.format))return;mp3Steps=data.getIntExtra("steps",0);mp3Undo=data.getBooleanExtra("undo",false);mp3SourceHash=data.getStringExtra("audioHash");dirty=true;updateMp3Note();}
+     private void adjustGain(int step){
+--- a/src/jp/dengaku/dentag/Mp3GainActivity.java
++++ b/src/jp/dengaku/dentag/Mp3GainActivity.java
+@@ -2,10 +2,13 @@
+ 
+ import android.app.*;
+ import android.content.*;
++import android.content.res.ColorStateList;
+ import android.content.res.Configuration;
+ import android.graphics.Color;
+ import android.graphics.Typeface;
+ import android.graphics.drawable.GradientDrawable;
++import android.graphics.drawable.RippleDrawable;
++import android.graphics.drawable.StateListDrawable;
+ import android.os.*;
+ import android.text.InputType;
+ import android.view.*;
+@@ -19,20 +22,22 @@
+     private final ArrayList<Button> buttons=new ArrayList<>();
+     private Mp3GainAnalyzer.Result analysis;private Mp3GainEngine.Undo savedUndo;
+     private File source;private int steps;private boolean undo;
+-    private int ink,muted,bg,card,accent;private TextView results,planned,state;private EditText target;
++    private int ink,muted,bg,card,accent,line;private TextView results,planned,state;private EditText target;
+     private Button minus,plus,restore,apply;private ProgressBar progress;
+     private int dp(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
+     private TextView text(String s,int size,int color){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(color);t.setLineSpacing(dp(4),1);return t;}
+     private GradientDrawable shape(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(14));return d;}
+     private void gap(LinearLayout p){p.addView(new View(this),new LinearLayout.LayoutParams(1,dp(14)));}
+-    private Button button(LinearLayout p,String label){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setTextColor(accent);b.setTextSize(15);b.setBackground(shape(card));p.addView(b,new LinearLayout.LayoutParams(-1,dp(54)));buttons.add(b);return b;}
++    private android.graphics.drawable.Drawable buttonBackground(int color,boolean outlined){GradientDrawable surface=shape(color);if(outlined)surface.setStroke(dp(1),line);StateListDrawable states=new StateListDrawable();states.addState(new int[]{-android.R.attr.state_enabled},shape(line));states.addState(new int[]{},new RippleDrawable(ColorStateList.valueOf((accent&0x00FFFFFF)|0x20000000),surface,shape(Color.WHITE)));return states;}
++    private Button button(LinearLayout p,String label){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_enabled},{}},new int[]{accent,muted}));b.setTextSize(15);b.setMinWidth(0);b.setMinHeight(dp(54));b.setPadding(dp(14),dp(10),dp(14),dp(10));b.setBackground(buttonBackground(card,false));p.addView(b,new LinearLayout.LayoutParams(-1,-2));buttons.add(b);return b;}
+     @Override public void onCreate(Bundle bundle){super.onCreate(bundle);
+         boolean dark=(getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
+         bg=Color.parseColor(dark?"#171C19":"#F6F5EF");card=Color.parseColor(dark?"#232C26":"#FFFFFF");ink=Color.parseColor(dark?"#F2F3EA":"#21372C");muted=Color.parseColor(dark?"#ACBCB0":"#677A6E");accent=Color.parseColor(dark?"#B5D5AF":"#355C4A");
++        line=Color.parseColor(dark?"#3E5143":"#DDE5DB");
+         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);getWindow().getDecorView().setSystemUiVisibility(dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+         LinearLayout outer=new LinearLayout(this);outer.setOrientation(LinearLayout.VERTICAL);outer.setBackgroundColor(bg);
+         if(Build.VERSION.SDK_INT>=30){getWindow().setDecorFitsSystemWindows(false);outer.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout()|WindowInsets.Type.ime());v.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;});}
+-        ScrollView scroll=new ScrollView(this);outer.addView(scroll,new LinearLayout.LayoutParams(-1,-1));LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(20),dp(18),dp(20),dp(20));scroll.addView(content);setContentView(outer);outer.requestApplyInsets();
++        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);outer.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));LinearLayout content=new LinearLayout(this);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(20),dp(18),dp(20),dp(20));scroll.addView(content);setContentView(outer);outer.requestApplyInsets();
+         TextView title=text("MP3Gain",28,ink);title.setTypeface(null,Typeface.BOLD);content.addView(title);gap(content);
+         content.addView(text("MP3本体の音量を変更します。ReplayGain非対応プレーヤーでも反映されます。\n再エンコードは行いません。",14,muted));gap(content);
+         content.addView(text("現在の解析結果",18,ink));results=text("解析しています…",16,ink);content.addView(results);gap(content);
+@@ -45,11 +50,16 @@
+         planned=text("0.0 dB",22,ink);planned.setGravity(Gravity.CENTER);row.addView(planned,new LinearLayout.LayoutParams(0,-1,1));
+         plus=new Button(this);plus.setText("＋");plus.setTextColor(accent);row.addView(plus,new LinearLayout.LayoutParams(dp(62),-1));buttons.add(plus);
+         minus.setOnClickListener(v->adjust(-1));plus.setOnClickListener(v->adjust(1));gap(content);
+-        restore=button(content,"MP3Gainを元に戻す");restore.setOnClickListener(v->{steps=-savedUndo.steps;undo=true;refresh();});gap(content);
+-        Button clear=button(content,"変更予約を解除");clear.setOnClickListener(v->{steps=0;undo=false;refresh();});gap(content);
+-        apply=button(content,"この設定で編集画面に戻る");apply.setTextColor(bg);apply.setBackground(shape(accent));apply.setOnClickListener(v->confirm());gap(content);
+-        content.addView(text("編集画面の「保存する」で、上書き保存・コピー保存を選びます。\n表示音量はReplayGain基準の推定値です。端末の音量や実際の音圧ではありません。\nUndoはDenTagが保存した情報を使用します。",12,muted));gap(content);
+-        Button cancel=button(content,"キャンセル");cancel.setOnClickListener(v->finish());Button license=button(content,"音量解析ライブラリのライセンス");license.setOnClickListener(v->showLicense());
++        LinearLayout editActions=new LinearLayout(this);editActions.setGravity(Gravity.CENTER_VERTICAL);content.addView(editActions,new LinearLayout.LayoutParams(-1,-2));
++        restore=button(editActions,"元に戻す（Undo）");restore.setTextSize(14);restore.setBackground(buttonBackground(card,true));restore.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));restore.setOnClickListener(v->{steps=-savedUndo.steps;undo=true;refresh();});
++        editActions.addView(new Space(this),new LinearLayout.LayoutParams(dp(10),1));Button clear=button(editActions,"変更予約を解除");clear.setTextSize(14);clear.setBackground(buttonBackground(card,true));clear.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));clear.setOnClickListener(v->{steps=0;undo=false;refresh();});gap(content);
++        LinearLayout help=new LinearLayout(this);help.setOrientation(LinearLayout.VERTICAL);help.setBackground(shape(card));help.setPadding(dp(18),dp(16),dp(18),dp(16));TextView helpTitle=text("保存は編集画面で",14,ink);helpTitle.setTypeface(null,Typeface.BOLD);help.addView(helpTitle);
++        TextView saveHint=text("戻ったあとに「保存する」を押して、上書き保存・コピー保存を選びます。",13,muted);saveHint.setPadding(0,dp(6),0,dp(12));help.addView(saveHint);help.addView(text("表示音量はReplayGain基準の推定値です。端末の音量や実際の音圧ではありません。\nUndoはDenTagが保存した情報を使用します。",12,muted));content.addView(help);gap(content);
++        Button license=button(content,"音量解析ライブラリのライセンス");license.setTextSize(12);license.setMinHeight(dp(48));license.setBackground(new RippleDrawable(ColorStateList.valueOf(line),shape(Color.TRANSPARENT),shape(Color.WHITE)));license.setOnClickListener(v->showLicense());
++        View divider=new View(this);divider.setBackgroundColor(line);outer.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));LinearLayout footer=new LinearLayout(this);footer.setOrientation(LinearLayout.VERTICAL);footer.setBackgroundColor(bg);footer.setPadding(dp(20),dp(12),dp(20),dp(14));outer.addView(footer,new LinearLayout.LayoutParams(-1,-2));
++        TextView footerHint=text("この画面では、変更を予約します",12,muted);footerHint.setGravity(Gravity.CENTER);footerHint.setPadding(0,0,0,dp(10));footer.addView(footerHint);LinearLayout navigation=new LinearLayout(this);navigation.setGravity(Gravity.CENTER_VERTICAL);footer.addView(navigation,new LinearLayout.LayoutParams(-1,-2));
++        Button cancel=button(navigation,"キャンセル");cancel.setBackground(buttonBackground(card,true));cancel.setLayoutParams(new LinearLayout.LayoutParams(0,-2,1));cancel.setOnClickListener(v->finish());navigation.addView(new Space(this),new LinearLayout.LayoutParams(dp(10),1));
++        apply=button(navigation,"設定を使って戻る");apply.setTextColor(new ColorStateList(new int[][]{{android.R.attr.state_enabled},{}},new int[]{bg,muted}));apply.setBackground(buttonBackground(accent,false));apply.setTypeface(null,Typeface.BOLD);apply.setLayoutParams(new LinearLayout.LayoutParams(0,-2,2));apply.setOnClickListener(v->confirm());
+         for(Button b:buttons)b.setEnabled(b==cancel||b==license);target.setEnabled(false);
+         String path=getIntent().getStringExtra("source");if(path==null){state.setText("曲を開き直してください。");return;}source=new File(path);
+         steps=bundle==null?getIntent().getIntExtra("steps",0):bundle.getInt("steps");undo=bundle==null?getIntent().getBooleanExtra("undo",false):bundle.getBoolean("undo");

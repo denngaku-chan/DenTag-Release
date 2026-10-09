@@ -2,14 +2,18 @@
 
 Android向けのMP3・FLACタグ編集アプリの配布用リポジトリです。
 
-最新バージョン：**v1.1.0（MP3Gain追加）**
+最新バージョン：**v1.1.0 UI更新版**
 
-- [v1.1.0 APKをダウンロード](https://github.com/denngaku-chan/DenTag-Release/raw/refs/heads/main/releases/v1.1.0/DenTag-v1.1.0.apk)
-- [v1.1.0 公開用ソース](https://github.com/denngaku-chan/DenTag-Release/raw/refs/heads/main/releases/v1.1.0/DenTag-source-public-v1.1.0.zip)
-- [変更点・検証結果](releases/v1.1.0/release-notes.md)
+- [UI更新版APKをダウンロード](https://github.com/denngaku-chan/DenTag-Release/raw/refs/heads/main/releases/v1.1.0-ui/DenTag-v1.1.0-ui.apk)
+- [UI更新版の公開用ソース](https://github.com/denngaku-chan/DenTag-Release/raw/refs/heads/main/releases/v1.1.0-ui/DenTag-v1.1.0-ui-source-public.zip)
+- [変更点・検証結果](releases/v1.1.0-ui/release-notes.md)
 - [公開済みRelease一覧](https://github.com/denngaku-chan/DenTag-Release/releases)
 
 曲名・アーティスト・アルバム名・トラック番号・発売年・ジャンルとジャケット画像を編集できます。保存時は「元の曲に上書き」と「編集したコピーを保存」を選べます。Android 8.0以上に対応しています。既存版と同じ署名のため、上書きインストールできます。
+
+## UI更新
+
+「まずは曲を選んでください」のカードをタップして曲を選べます。選択後もカードから曲を変更できます。MP3Gain画面下部の操作を整理し、「設定を使って戻る」を画面下に固定しました。
 
 ## MP3Gain
 
