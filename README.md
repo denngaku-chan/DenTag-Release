@@ -4,8 +4,8 @@ Android向けのMP3・FLACタグ編集アプリの配布用リポジトリです
 
 最新バージョン：**v1.1.0 UI更新版**
 
-- [UI更新版APKをダウンロード](https://github.com/denngaku-chan/DenTag-Release/raw/refs/heads/main/releases/v1.1.0-ui/DenTag-v1.1.0-ui.apk)
-- [UI更新版の公開用ソース](https://github.com/denngaku-chan/DenTag-Release/raw/refs/heads/main/releases/v1.1.0-ui/DenTag-v1.1.0-ui-source-public.zip)
+- [UI更新版APKをダウンロード](https://github.com/denngaku-chan/DenTag-Release/releases/download/v1.1.0-ui/DenTag-v1.1.0-ui.apk)
+- [UI更新版の公開用ソース](https://github.com/denngaku-chan/DenTag-Release/releases/download/v1.1.0-ui/DenTag-v1.1.0-ui-source-public.zip)
 - [変更点・検証結果](releases/v1.1.0-ui/release-notes.md)
 - [公開済みRelease一覧](https://github.com/denngaku-chan/DenTag-Release/releases)
 

@@ -1,0 +1,86 @@
+name: Publish DenTag v1.1.0 and UI update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'releases/v1.1.0/**'
+      - 'releases/v1.1.0-ui/**'
+      - '.github/workflows/release-v1.1.0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dentag-v1.1.0-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ASSET_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Download and verify both prepared releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in v1.1.0 v1.1.0-ui; do
+            mkdir "$tag"
+            if [ "$tag" = v1.1.0 ]; then
+              assets=(DenTag-v1.1.0.apk DenTag-source-public-v1.1.0.zip SHA256SUMS release-notes.md)
+            else
+              assets=(DenTag-v1.1.0-ui.apk DenTag-v1.1.0-ui-source-public.zip ui-changes.patch SHA256SUMS release-notes.md)
+            fi
+            for asset in "${assets[@]}"; do
+              gh api --method GET "repos/$GH_REPO/contents/releases/$tag/$asset" -f ref="$ASSET_COMMIT" --jq '.content' | base64 --decode > "$tag/$asset"
+            done
+            (cd "$tag" && sha256sum --check SHA256SUMS)
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          for folder in ('v1.1.0', 'v1.1.0-ui'):
+              for path in Path(folder).glob('*.zip'):
+                  with zipfile.ZipFile(path) as archive:
+                      assert archive.testzip() is None, path
+                      assert not any(
+                          name.lower().endswith(('.keystore', '.jks'))
+                          or '/signing/' in name.lower()
+                          or '.dentag-signing' in name.lower()
+                          for name in archive.namelist()
+                      ), path
+          PY
+      - name: Publish v1.1.0, then mark the UI update as Latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in v1.1.0 v1.1.0-ui; do
+            if [ "$tag" = v1.1.0 ]; then
+              target=8fbbbbb6308b79c7d310488734e40be5bf2c75d5
+              title='DenTag v1.1.0'
+              latest=false
+              assets=(DenTag-v1.1.0.apk DenTag-source-public-v1.1.0.zip SHA256SUMS)
+            else
+              target=72832d578e2ccaac465af5b395c491001e26bdab
+              title='DenTag v1.1.0 UI更新版'
+              latest=true
+              assets=(DenTag-v1.1.0-ui.apk DenTag-v1.1.0-ui-source-public.zip ui-changes.patch SHA256SUMS)
+            fi
+            if gh release view "$tag" --repo "$GH_REPO" --json isDraft --jq '.isDraft' > draft-state.txt 2>/dev/null; then
+              if [ "$(cat draft-state.txt)" = false ]; then
+                echo "$tag is already published."
+                continue
+              fi
+            else
+              gh release create "$tag" --repo "$GH_REPO" --draft --target "$target" --title "$title" --notes-file "$tag/release-notes.md"
+            fi
+            uploads=()
+            for asset in "${assets[@]}"; do uploads+=("$tag/$asset"); done
+            gh release upload "$tag" "${uploads[@]}" --repo "$GH_REPO" --clobber
+            gh release edit "$tag" --repo "$GH_REPO" --draft=false --prerelease=false --latest="$latest"
+          done
