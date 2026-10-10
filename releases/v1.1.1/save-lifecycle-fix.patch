@@ -1,0 +1,673 @@
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index 7951d53..3423af4 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -1,4 +1,4 @@
+-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="jp.dengaku.dentag" android:versionCode="4" android:versionName="1.1.0">
++<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="jp.dengaku.dentag" android:versionCode="5" android:versionName="1.1.1">
+     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+     <application android:label="DenTag" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:supportsRtl="true">
+         <activity android:name=".Mp3GainActivity" android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden|uiMode" android:windowSoftInputMode="adjustResize" />
+diff --git a/README.md b/README.md
+index e84826a..fe2cddc 100644
+--- a/README.md
++++ b/README.md
+@@ -1,15 +1,15 @@
+-# DenTag 1.1.0
++# DenTag 1.1.1
+ 
+ Android向けのMP3・FLACタグ編集アプリ。音声の切り貼り・変換・再圧縮は行いません。
+ 
+ ## 使い方
+ 
+-1. `DenTag-v1.1.0.apk` をスマホにダウンロードしてインストールします。
+-2. **曲を選ぶ**を押し、MP3またはFLACを開きます。
++1. `DenTag-v1.1.1.apk` をスマホにダウンロードしてインストールします。
++2. **まずは曲を選んでください**のカードをタップし、MP3またはFLACを開きます。曲を変更する場合もカードをタップします。
+ 3. 曲名・アーティスト・アルバム名・トラック番号・発売年・ジャンルを編集します。
+ 4. **写真を選ぶ**でジャケットを指定します。画像を消す場合は**画像を削除**を押します。
+ 5. **音量補正（ReplayGain）**にdB値を入力します。不要ならそのままにします。
+-6. MP3本体の音量も変える場合は **MP3Gain** を開き、解析後に自動／手動調整を選んで **この設定で編集画面に戻る** を押します。不要ならそのままにします。
++6. MP3本体の音量も変える場合は **MP3Gain** を開き、解析後に自動／手動調整を選んで **設定を使って戻る** を押します。不要ならそのままにします。
+ 7. **保存する**を押し、次のどちらかを選びます。
+    - **元の曲に上書き**：ファイル名を確認して**上書き保存**を押します。
+    - **編集したコピーを保存**：保存先を選びます。既定名は `元の名前_edited.mp3` または `.flac` です。
+@@ -39,8 +39,8 @@ ReplayGainタグとは別に、MP3 Layer IIIの `global_gain` を変更します
+ - **音量を自動調整**：標準89 dB。目標値は70〜100 dBで変更でき、次回にも保持します。曲単位のトラックゲインです。ピーク値とglobal gainの可変範囲に制限されるため、目標に届かない場合があります。
+ - **手動調整**：±ボタンで約1.5 dBずつ変更します。厳密な1段階は `5 × log10(2)` ≈ 1.50515 dBです。各フレームの音量値を丸めたりラップさせず、全て同じ段数だけ変更します。範囲外の変更はできません。
+ - クリッピングの可能性がある設定では、編集画面へ戻る前に **キャンセル／このまま適用** を表示します。予測は解析したPCMのピーク値に基づきます。浮動小数点PCMを出力できない端末では16 bit PCMによる推定であることを表示します。
+-- **この設定で編集画面に戻る** は変更の予約です。編集画面の **保存する** で上書き・コピー保存を選ぶと反映します。**変更予約を解除** で取り消せます。コピー保存では元ファイルは変わりません。
+-- **MP3Gainを元に戻す**：DenTagのUndo情報があり、解析した音声と一致する場合のみ使用できます。実行を予約した後、編集画面で保存します。繰り返した変更も、最初のMP3Gain適用前の音声へ戻ります。タグ編集とUndoは独立しており、後で編集したタイトル等は保持します。
++- **設定を使って戻る** は変更の予約です。編集画面の **保存する** で上書き・コピー保存を選ぶと反映します。**変更予約を解除** で取り消せます。コピー保存では元ファイルは変わりません。
++- **元に戻す（Undo）**：DenTagのUndo情報があり、解析した音声と一致する場合のみ使用できます。実行を予約した後、編集画面で保存します。繰り返した変更も、最初のMP3Gain適用前の音声へ戻ります。タグ編集とUndoは独立しており、後で編集したタイトル等は保持します。
+ 
+ Undo情報はID3のTXXX/TXX `DENTAG_MP3GAIN_UNDO` に保存します。形式は `1|累積変更段数|元の音声SHA-256|現在の音声SHA-256` です。別アプリが音声部分を書き換えた場合、破損した情報がある場合は安全のため処理を拒否します。タグが削除されるとUndoできません。他アプリが独自に保存した `MP3GAIN_UNDO` は保持しますが、そのUndo形式の復元は今回の対象外です。
+ 
+@@ -73,6 +73,13 @@ MPEG-1 / 2 / 2.5 Layer III、モノラル・ステレオ、CBR・VBR、CRC付き
+ 
+ 保存先は読み取りにも対応していることが必要です。通常の端末内フォルダを推奨します。コピー保存後の確認に失敗した場合は成功とせず、作成したコピーの削除を試みます。上書き元のファイルを削除する処理はありません。
+ 
++## 1.1.1の変更
++
++- 保存中に画面が再生成されても保存処理と結果を引き継ぎ、完了後も同じ曲の編集・保存を続けられます。
++- 破棄済み画面への保存・元データ取り出しの完了ダイアログ表示を防ぎます。
++- 曲選択カードとMP3Gain画面下部のUI更新を含みます。
++- Android API 26・35の保存・画面再生成の回帰テストを追加しました。
++
+ ## 1.1.0の変更
+ 
+ - MP3Gainの解析・89 dBへの自動調整・手動調整・クリッピング警告。
+@@ -108,7 +115,7 @@ ANDROID_SDK_ROOT=/absolute/path/to/android-sdk bash build-apk.sh
+ ANDROID_SDK_ROOT=/absolute/path/to/android-sdk ECJ_JAR=/absolute/path/to/ecj.jar bash build-apk.sh
+ ```
+ 
+-出力は `dist/DenTag-v1.1.0.apk` です。公開用ソースには配布APKの署名鍵を含めていません。ビルド時にローカルの署名鍵を生成するため、自己ビルドしたAPKは配布版へ上書きインストールできません。
++出力は `dist/DenTag-v1.1.1.apk` です。公開用ソースには配布APKの署名鍵を含めていません。ビルド時にローカルの署名鍵を生成するため、自己ビルドしたAPKは配布版へ上書きインストールできません。
+ 
+ ## 検証結果
+ 
+@@ -120,7 +127,9 @@ ANDROID_SDK_ROOT=/absolute/path/to/android-sdk ECJ_JAR=/absolute/path/to/ecj.jar
+ 
+ `tests/test_mp3gain.py` の156ケースを追加しました。12種類のサンプルレートで元のC版ReplayGain解析と比較し、実際のMP3・LAME生成のCRC付きMP3で再生音量の倍率とUndoの完全一致を確認しています。MPEG全バージョンの音量値・CRC以外のビット保持、タグ・画像・ReplayGain保持、89 dB等への自動調整、累積Undo、外部変更や破損データの拒否も確認しました。全体は232ケースです。
+ 
+-APKのビルドとv2 / v3署名検証、既存版との署名一致の確認は完了しています。Android実機・エミュレーターでの画面操作、MediaCodecによる実機の音量解析、実際のSAFプロバイダー経由の保存はこの環境では未確認です。これらの端末上の完了条件は実機での確認が必要です。
++`tests/android` にRobolectricによる画面・保存の回帰テストを追加しました。Android API 26・35で、保存中の画面再生成、再開時の結果反映、続けて保存できること、保存失敗時の編集保持、コピー保存と元データ取り出しを確認します。実行方法は `tests/android/README.md` にあります。
++
++APKのビルドとv2 / v3署名検証、既存版との署名一致の確認は完了しています。Android実機の表示、MediaCodecによる実機の音量解析、実際のSAFプロバイダー経由の保存はこの環境では未確認です。
+ 
+ 仕様参照：
+ - https://id3.org/id3v2.3.0
+diff --git a/build-apk.sh b/build-apk.sh
+index 7be23d2..fe3131c 100644
+--- a/build-apk.sh
++++ b/build-apk.sh
+@@ -25,5 +25,5 @@ cp "$build_dir/unsigned.apk" "$build_dir/with-dex.apk"
+ if [[ ! -f "$keystore" ]]; then
+   keytool -genkeypair -noprompt -keystore "$keystore" -storepass dentag-local-build -keypass dentag-local-build -alias dentag -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=DenTag, OU=Personal, O=Dengaku, C=JP'
+ fi
+-"$build_tools/apksigner" sign --ks "$keystore" --ks-pass pass:dentag-local-build --key-pass pass:dentag-local-build --out "$dist_dir/DenTag-v1.1.0.apk" "$build_dir/aligned.apk"
+-"$build_tools/apksigner" verify --verbose "$dist_dir/DenTag-v1.1.0.apk"
++"$build_tools/apksigner" sign --ks "$keystore" --ks-pass pass:dentag-local-build --key-pass pass:dentag-local-build --out "$dist_dir/DenTag-v1.1.1.apk" "$build_dir/aligned.apk"
++"$build_tools/apksigner" verify --verbose "$dist_dir/DenTag-v1.1.1.apk"
+diff --git a/src/jp/dengaku/dentag/DocumentOperation.java b/src/jp/dengaku/dentag/DocumentOperation.java
+new file mode 100644
+index 0000000..ececf9f
+--- /dev/null
++++ b/src/jp/dengaku/dentag/DocumentOperation.java
+@@ -0,0 +1,87 @@
++package jp.dengaku.dentag;
++
++import android.content.Context;
++import android.content.ContentResolver;
++import android.database.Cursor;
++import android.net.Uri;
++import android.os.Handler;
++import android.os.Looper;
++import android.provider.DocumentsContract;
++import android.provider.OpenableColumns;
++import java.io.*;
++import java.lang.ref.WeakReference;
++
++/** A document transaction survives configuration changes without retaining an Activity. */
++final class DocumentOperation implements Runnable {
++    interface Listener { void documentFinished(DocumentOperation operation); }
++    static final class Editor {
++        final File source;final TagEngine.Song song;final TagEngine.Picture picture;
++        final String name,gain,frameHash;final Uri uri;final String[] values;
++        final boolean writable,artChanged,gainChanged,dirty,frameUndo;final int frameSteps;
++        Editor(File source,TagEngine.Song song,TagEngine.Picture picture,String name,Uri uri,boolean writable,
++               String[] values,String gain,boolean artChanged,boolean gainChanged,boolean dirty,int frameSteps,boolean frameUndo,String frameHash){
++            this.source=source;this.song=song;this.picture=picture;this.name=name;this.uri=uri;this.writable=writable;
++            this.values=values.clone();this.gain=gain;this.artChanged=artChanged;this.gainChanged=gainChanged;this.dirty=dirty;
++            this.frameSteps=frameSteps;this.frameUndo=frameUndo;this.frameHash=frameHash;
++        }
++    }
++    static final class Result {
++        File source;TagEngine.Song song;String name;Exception error;
++    }
++    final Editor editor;final boolean overwrite,recovery,editFrames;
++    private final ContentResolver resolver;private final File cache,backup,backupName;private final Uri destination;
++    private final Handler main=new Handler(Looper.getMainLooper());
++    // Listener and result are accessed only on the main thread.
++    private WeakReference<Listener> listener=new WeakReference<>(null);private Result result;
++    DocumentOperation(Context context,Uri destination,boolean overwrite,boolean recovery,Editor editor){
++        Context app=context.getApplicationContext();resolver=app.getContentResolver();cache=app.getCacheDir();
++        backup=new File(app.getFilesDir(),"overwrite-original.bin");backupName=new File(app.getFilesDir(),"overwrite-original-name.txt");
++        this.destination=destination;this.overwrite=overwrite;this.recovery=recovery;this.editor=editor;
++        editFrames=editor.frameSteps!=0||editor.frameUndo;
++    }
++    String progress(){return recovery?"元データを保存しています…":overwrite?"上書き保存し、音声データを確認しています…":"コピーを保存し、音声データを確認しています…";}
++    void attach(Listener owner){listener=new WeakReference<>(owner);deliver();}
++    void detach(Listener owner){if(listener.get()==owner)listener.clear();}
++    Result result(){return result;}
++    private void deliver(){Listener owner=listener.get();if(owner!=null&&result!=null)owner.documentFinished(this);}
++    private SaveEngine.Target target(){return new SaveEngine.Target(){
++        public InputStream openRead() throws IOException{return resolver.openInputStream(destination);}
++        public OutputStream openWrite() throws IOException{return resolver.openOutputStream(destination,"wt");}
++    };}
++    private String name(){try(Cursor c=resolver.query(destination,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){
++        if(c!=null&&c.moveToFirst())return c.getString(0);
++    }catch(Exception ignored){}return "曲";}
++    @Override public void run(){
++        Result outcome=new Result();File edited=null,check=null,gained=null;boolean committed=false;
++        try{
++            if(recovery){
++                check=File.createTempFile("recover-",".bin",cache);SaveEngine.copyVerified(backup,target(),check);
++                backup.delete();backupName.delete();
++            }else{
++                String[] values=editor.values.clone();for(int i=0;i<values.length;i++)values[i]=values[i].trim();
++                edited=File.createTempFile("edited-",".bin",cache);
++                if(editFrames){
++                    if(editor.frameHash==null||!editor.frameHash.equals(Mp3GainEngine.inspect(editor.source).audioHash))throw new IOException("解析した音声と一致しません。MP3Gainを設定し直してください。");
++                    gained=File.createTempFile("mp3gain-",".mp3",cache);Mp3GainEngine.Prepared prepared=Mp3GainEngine.prepare(editor.source,gained,editor.frameSteps,editor.frameUndo);
++                    TagEngine.write(gained,edited,TagEngine.read(gained),values,editor.picture,editor.artChanged,editor.gain,editor.gainChanged,prepared.undo,true);
++                    Mp3GainEngine.verifyTransform(editor.source,edited,prepared.appliedSteps);
++                }else TagEngine.write(editor.source,edited,editor.song,values,editor.picture,editor.artChanged,editor.gain,editor.gainChanged);
++                TagEngine.Song updated=overwrite?TagEngine.read(edited):null;
++                check=File.createTempFile("check-",".bin",cache);
++                if(overwrite){
++                    if(backup.exists())throw new IOException("保管中の元データを先に取り出してください。");
++                    try(FileOutputStream out=new FileOutputStream(backupName)){out.write(editor.name.getBytes("UTF-8"));out.getFD().sync();}
++                    SaveEngine.overwrite(editor.source,edited,target(),backup,check);
++                    committed=true;backupName.delete();outcome.source=edited;outcome.song=updated;
++                }else SaveEngine.copyVerified(edited,target(),check);
++            }
++            outcome.name=name();
++        }catch(Exception e){
++            if(!overwrite){try{DocumentsContract.deleteDocument(resolver,destination);}catch(Exception ignored){}}
++            if(overwrite&&!backup.exists())backupName.delete();outcome.error=e;
++        }finally{
++            if(edited!=null&&!(overwrite&&committed))edited.delete();if(check!=null)check.delete();if(gained!=null)gained.delete();
++        }
++        main.post(()->{result=outcome;deliver();});
++    }
++}
+diff --git a/src/jp/dengaku/dentag/MainActivity.java b/src/jp/dengaku/dentag/MainActivity.java
+index f7d1d62..1d81667 100644
+--- a/src/jp/dengaku/dentag/MainActivity.java
++++ b/src/jp/dengaku/dentag/MainActivity.java
+@@ -20,7 +20,7 @@ import java.io.*;
+ import java.util.*;
+ import java.util.concurrent.*;
+ 
+-public class MainActivity extends Activity {
++public class MainActivity extends Activity implements DocumentOperation.Listener {
+     private static final int OPEN=10, PHOTO=11, SAVE=12, RECOVER=13, MP3GAIN=14;
+     private final ExecutorService worker=Executors.newSingleThreadExecutor();
+     private final ArrayList<View> controls=new ArrayList<>();
+@@ -43,14 +43,18 @@ public class MainActivity extends Activity {
+     private Uri sourceUri;
+     private boolean sourceWritable;
+     private int ink, muted, bg, card, accent, line;
++    private DocumentOperation documentOperation;
++    private boolean resumed;
+ 
+     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+0.5f);}
+     @Override public void onCreate(Bundle state){
+         super.onCreate(state);
+         colors();build();boolean restoring=false;
++        Object retained=getLastNonConfigurationInstance();
++        if(retained instanceof DocumentOperation){documentOperation=(DocumentOperation)retained;restoreEditor(documentOperation.editor);setBusy(true,documentOperation.progress());return;}
+         if(state!=null){String uri=state.getString("sourceUri");if(uri!=null)sourceUri=Uri.parse(uri);sourceWritable=state.getBoolean("sourceWritable");}
+         if(state!=null){String path=state.getString("source");if(path!=null){File f=new File(path);if(f.isFile()){restoring=true;displayName=state.getString("name","");setBusy(true,"編集中の曲を復元しています…");worker.execute(()->{try{TagEngine.Song s=TagEngine.read(f);TagEngine.Picture p=s.picture;boolean changed=state.getBoolean("artChanged");if(changed){String ap=state.getString("picture");if(ap==null)p=null;else{File pf=new File(ap);if(!pf.isFile())throw new IOException("編集中の画像を復元できませんでした。曲を開き直してください。");p=new TagEngine.Picture(readLimited(new FileInputStream(pf),16*1024*1024),state.getString("mime"),state.getInt("width"),state.getInt("height"));}}
+-                    final TagEngine.Picture rp=p;runOnUiThread(()->{source=f;song=s;picture=rp;artworkChanged=changed;fill();String[] vals=state.getStringArray("values");if(vals!=null)for(int i=0;i<6;i++)fields[i].setText(vals[i]);volume.setText(state.getString("volume",song.trackGain.replaceAll("(?i)\\s*dB$", "")));gainChanged=state.getBoolean("gainChanged");mp3Steps=state.getInt("mp3Steps");mp3Undo=state.getBoolean("mp3Undo");mp3SourceHash=state.getString("mp3Hash","");updateMp3Note();dirty=state.getBoolean("dirty");setBusy(false,"編集を続けられます");if(deferredMp3!=null){Intent value=deferredMp3;deferredMp3=null;applyMp3Result(value);}if(deferredSave!=null){Uri uri=deferredSave;deferredSave=null;export(uri,false);}if(deferredRecovery!=null){Uri uri=deferredRecovery;deferredRecovery=null;recover(uri);}else if(backup().exists())offerRecovery();});
++                    final TagEngine.Picture rp=p;runOnUiThread(()->{if(isDestroyed())return;source=f;song=s;picture=rp;artworkChanged=changed;fill();String[] vals=state.getStringArray("values");if(vals!=null)for(int i=0;i<6;i++)fields[i].setText(vals[i]);volume.setText(state.getString("volume",song.trackGain.replaceAll("(?i)\\s*dB$", "")));gainChanged=state.getBoolean("gainChanged");mp3Steps=state.getInt("mp3Steps");mp3Undo=state.getBoolean("mp3Undo");mp3SourceHash=state.getString("mp3Hash","");updateMp3Note();dirty=state.getBoolean("dirty");setBusy(false,"編集を続けられます");if(deferredMp3!=null){Intent value=deferredMp3;deferredMp3=null;applyMp3Result(value);}if(deferredSave!=null){Uri uri=deferredSave;deferredSave=null;export(uri,false);}if(deferredRecovery!=null){Uri uri=deferredRecovery;deferredRecovery=null;recover(uri);}else if(backup().exists())offerRecovery();});
+                 }catch(Exception e){runOnUiThread(()->{setBusy(false,"曲を選んでください");error(e);if(backup().exists())offerRecovery();});}});}}}
+         if(backup().exists()&&!restoring)offerRecovery();
+     }
+@@ -129,7 +133,7 @@ public class MainActivity extends Activity {
+     private static void copy(InputStream input,OutputStream output) throws IOException {if(input==null||output==null)throw new IOException("ファイルを開けませんでした。");try(InputStream in=input;OutputStream out=output){byte[] b=new byte[65536];int n;while((n=in.read(b))!=-1)out.write(b,0,n);}}
+     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==MP3GAIN){if(result==RESULT_OK&&data!=null){if(busy)deferredMp3=data;else applyMp3Result(data);}return;}if(result!=RESULT_OK||data==null||data.getData()==null)return;Uri uri=data.getData();
+         if(request==OPEN){int flags=data.getFlags()&(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);try{getContentResolver().takePersistableUriPermission(uri,flags);}catch(SecurityException|IllegalArgumentException ignored){}setBusy(true,"曲の情報を読み込んでいます…");worker.execute(()->{File f=null;try{String n=name(uri);boolean writable=canWrite(uri);f=File.createTempFile("song-",".bin",getCacheDir());copy(getContentResolver().openInputStream(uri),new FileOutputStream(f));TagEngine.Song s=TagEngine.read(f);File loaded=f;
+-            runOnUiThread(()->{if(source!=null)source.delete();source=loaded;sourceUri=uri;sourceWritable=writable;song=s;picture=s.picture;displayName=n;artworkChanged=false;fill();setBusy(false,writable?"タグとジャケットを編集できます":"この曲はコピーとして保存できます");});
++            runOnUiThread(()->{if(isDestroyed()){loaded.delete();return;}if(source!=null)source.delete();source=loaded;sourceUri=uri;sourceWritable=writable;song=s;picture=s.picture;displayName=n;artworkChanged=false;fill();setBusy(false,writable?"タグとジャケットを編集できます":"この曲はコピーとして保存できます");});
+         }catch(Exception e){if(f!=null)f.delete();runOnUiThread(()->{setBusy(false,song==null?"曲を選んでください":"前の曲を編集中です");error(e);});}});}
+         if(request==PHOTO){setBusy(true,"写真を読み込んでいます…");worker.execute(()->{try{byte[] raw=readLimited(getContentResolver().openInputStream(uri),32*1024*1024);BitmapFactory.Options o=new BitmapFactory.Options();o.inJustDecodeBounds=true;BitmapFactory.decodeByteArray(raw,0,raw.length,o);if(o.outWidth<=0||o.outHeight<=0)throw new IOException("この画像を読み込めません。JPEG・PNGなどを選んでください。");
+             TagEngine.Picture p;
+@@ -140,7 +144,7 @@ public class MainActivity extends Activity {
+                 Matrix matrix=new Matrix();switch(orientation){case 2:matrix.setScale(-1,1);break;case 3:matrix.setRotate(180);break;case 4:matrix.setScale(1,-1);break;case 5:matrix.setRotate(90);matrix.postScale(-1,1);break;case 6:matrix.setRotate(90);break;case 7:matrix.setRotate(-90);matrix.postScale(-1,1);break;case 8:matrix.setRotate(-90);break;}
+                 if(!matrix.isIdentity()){Bitmap rotated=Bitmap.createBitmap(bmp,0,0,bmp.getWidth(),bmp.getHeight(),matrix,true);if(rotated!=bmp)bmp.recycle();bmp=rotated;}
+                 ByteArrayOutputStream out=new ByteArrayOutputStream();bmp.compress(Bitmap.CompressFormat.JPEG,92,out);p=new TagEngine.Picture(out.toByteArray(),"image/jpeg",bmp.getWidth(),bmp.getHeight());bmp.recycle();}
+-            File pf=new File(getCacheDir(),"pending-cover");try(FileOutputStream out=new FileOutputStream(pf)){out.write(p.data);}runOnUiThread(()->{picture=p;artworkChanged=true;dirty=true;preview();setBusy(false,"ジャケットを選択しました");});
++            File pf=new File(getCacheDir(),"pending-cover");try(FileOutputStream out=new FileOutputStream(pf)){out.write(p.data);}runOnUiThread(()->{if(isDestroyed())return;picture=p;artworkChanged=true;dirty=true;preview();setBusy(false,"ジャケットを選択しました");});
+         }catch(Exception|OutOfMemoryError e){runOnUiThread(()->{setBusy(false,"写真を選び直してください");error(e);});}});}
+         if(request==SAVE){if(busy&&song==null)deferredSave=uri;else export(uri,false);}
+         if(request==RECOVER){if(busy&&song==null)deferredRecovery=uri;else recover(uri);}
+@@ -169,53 +173,41 @@ public class MainActivity extends Activity {
+             .setType(song.format.equals("MP3")?"audio/mpeg":"audio/flac")
+             .putExtra(Intent.EXTRA_TITLE,base+"_edited."+song.format.toLowerCase(Locale.ROOT));launch(i,SAVE);
+     }
+-    private SaveEngine.Target target(Uri uri){return new SaveEngine.Target(){
+-        public InputStream openRead() throws IOException{return getContentResolver().openInputStream(uri);}
+-        public OutputStream openWrite() throws IOException{return getContentResolver().openOutputStream(uri,"wt");}
+-    };}
+     private File backup(){return new File(getFilesDir(),"overwrite-original.bin");}
+     private File backupName(){return new File(getFilesDir(),"overwrite-original-name.txt");}
++    private DocumentOperation.Editor editorState(){
++        String[] values=new String[6];for(int i=0;i<6;i++)values[i]=fields[i].getText().toString();
++        return new DocumentOperation.Editor(source,song,picture,displayName,sourceUri,sourceWritable,values,volume.getText().toString(),artworkChanged,gainChanged,dirty,mp3Steps,mp3Undo,mp3SourceHash);
++    }
++    private void restoreEditor(DocumentOperation.Editor editor){
++        source=editor.source;song=editor.song;picture=editor.picture;displayName=editor.name;sourceUri=editor.uri;sourceWritable=editor.writable;
++        if(song!=null)fill();for(int i=0;i<6;i++)fields[i].setText(editor.values[i]);volume.setText(editor.gain);
++        artworkChanged=editor.artChanged;gainChanged=editor.gainChanged;dirty=editor.dirty;mp3Steps=editor.frameSteps;mp3Undo=editor.frameUndo;mp3SourceHash=editor.frameHash;updateMp3Note();
++    }
++    private void startDocumentOperation(DocumentOperation operation){
++        documentOperation=operation;setBusy(true,operation.progress());if(resumed)operation.attach(this);worker.execute(operation);
++    }
+     private void export(Uri uri,boolean overwrite){
+         if(busy||song==null||source==null){error(new IOException("曲を開き直してから保存してください。"));return;}
+         if(!overwrite&&uri.equals(sourceUri)){error(new IOException("元の曲への保存は「元の曲に上書き」を選んでください。"));return;}
+-        final String[] values=new String[6];for(int i=0;i<6;i++)values[i]=fields[i].getText().toString().trim();
+-        final String gain=volume.getText().toString();final boolean editGain=gainChanged;
+-        if(editGain){try{TagEngine.normalizeGain(gain);}catch(IOException e){volume.setError(e.getMessage());volume.requestFocus();return;}}
+-        final int frameSteps=mp3Steps;final boolean frameUndo=mp3Undo;final String frameHash=mp3SourceHash;final boolean editFrames=frameSteps!=0||frameUndo;
+-        final File original=source;final TagEngine.Song originalSong=song;final TagEngine.Picture art=picture;final boolean artChanged=artworkChanged;
+-        setBusy(true,overwrite?"上書き保存し、音声データを確認しています…":"コピーを保存し、音声データを確認しています…");
+-        worker.execute(()->{File result=null;File check=null;File gained=null;boolean committed=false;
+-            try{
+-                result=File.createTempFile("edited-",".bin",getCacheDir());
+-                if(editFrames){
+-                    if(frameHash==null||!frameHash.equals(Mp3GainEngine.inspect(original).audioHash))throw new IOException("解析した音声と一致しません。MP3Gainを設定し直してください。");
+-                    gained=File.createTempFile("mp3gain-",".mp3",getCacheDir());Mp3GainEngine.Prepared prepared=Mp3GainEngine.prepare(original,gained,frameSteps,frameUndo);
+-                    TagEngine.write(gained,result,TagEngine.read(gained),values,art,artChanged,gain,editGain,prepared.undo,true);
+-                    Mp3GainEngine.verifyTransform(original,result,prepared.appliedSteps);
+-                }else TagEngine.write(original,result,originalSong,values,art,artChanged,gain,editGain);
+-                TagEngine.Song updated=overwrite?TagEngine.read(result):null;
+-                check=File.createTempFile("check-",".bin",getCacheDir());
+-                if(overwrite){
+-                    if(backup().exists())throw new IOException("保管中の元データを先に取り出してください。");
+-                    try(FileOutputStream out=new FileOutputStream(backupName())){out.write(displayName.getBytes("UTF-8"));out.getFD().sync();}
+-                    SaveEngine.overwrite(original,result,target(uri),backup(),check);
+-                    committed=true;backupName().delete();
+-                }else SaveEngine.copyVerified(result,target(uri),check);
+-                String n=name(uri);final File savedSource=result;
+-                runOnUiThread(()->{
+-                    if(overwrite){source=savedSource;song=updated;picture=updated.picture;artworkChanged=false;fill();original.delete();}
+-                    dirty=false;setBusy(false,(overwrite?"上書きしました：":"コピーを保存しました：")+n);
+-                    new AlertDialog.Builder(this).setTitle(overwrite?"上書きできました 🎵":"コピーを保存できました 🎵")
+-                        .setMessage((editFrames?"タグ・ジャケット・ReplayGainを保持し、MP3Gainを反映しました。音量値と必要なCRC以外の音声データが変わっていないことを確認しました。再エンコードは行っていません。":"タグ・ジャケット・音量補正を保存しました。音声データが元の曲と同じことも確認しました。")+"\n\n"+n).setPositiveButton("OK",null).show();
+-                });
+-            }catch(Exception e){
+-                if(!overwrite){try{DocumentsContract.deleteDocument(getContentResolver(),uri);}catch(Exception ignored){}}
+-                if(overwrite&&!backup().exists())backupName().delete();
+-                runOnUiThread(()->{setBusy(false,"保存できませんでした。編集内容は残っています");if(e instanceof SaveEngine.RecoveryRequired)offerRecovery();else error(e);});
+-            }finally{
+-                if(result!=null&&!(overwrite&&committed))result.delete();if(check!=null)check.delete();if(gained!=null)gained.delete();
+-            }
+-        });
++        if(gainChanged){try{TagEngine.normalizeGain(volume.getText().toString());}catch(IOException e){volume.setError(e.getMessage());volume.requestFocus();return;}}
++        startDocumentOperation(new DocumentOperation(this,uri,overwrite,false,editorState()));
++    }
++    @Override public void documentFinished(DocumentOperation operation){
++        if(operation!=documentOperation||!resumed||isFinishing()||isDestroyed())return;
++        DocumentOperation.Result result=operation.result();operation.detach(this);documentOperation=null;
++        if(result.error!=null){
++            setBusy(false,operation.recovery?"元データは引き続き保管しています":"保存できませんでした。編集内容は残っています");
++            if(result.error instanceof SaveEngine.RecoveryRequired)offerRecovery();else error(result.error);return;
++        }
++        if(operation.recovery){
++            setBusy(false,"元データを保存しました："+result.name);new AlertDialog.Builder(this).setTitle("元データを保存しました")
++                .setMessage(result.name+"\n\n編集を続ける場合は、保存した元の曲を選び直してください。").setPositiveButton("OK",null).show();return;
++        }
++        if(operation.overwrite){source=result.source;song=result.song;picture=result.song.picture;artworkChanged=false;fill();operation.editor.source.delete();}
++        dirty=false;setBusy(false,(operation.overwrite?"上書きしました：":"コピーを保存しました：")+result.name);
++        new AlertDialog.Builder(this).setTitle(operation.overwrite?"上書きできました 🎵":"コピーを保存できました 🎵")
++            .setMessage((operation.editFrames?"タグ・ジャケット・ReplayGainを保持し、MP3Gainを反映しました。音量値と必要なCRC以外の音声データが変わっていないことを確認しました。再エンコードは行っていません。":"タグ・ジャケット・音量補正を保存しました。音声データが元の曲と同じことも確認しました。")+"\n\n"+result.name).setPositiveButton("OK",null).show();
+     }
+     private void offerRecovery(){
+         if(isFinishing()||isDestroyed()||!backup().exists())return;
+@@ -233,20 +225,15 @@ public class MainActivity extends Activity {
+     private void recover(Uri uri){
+         if(busy)return;
+         if(uri.equals(sourceUri)){error(new IOException("元データは別のファイルとして保存してください。"));return;}
+-        setBusy(true,"元データを保存しています…");
+-        worker.execute(()->{File check=null;try{
+-            check=File.createTempFile("recover-",".bin",getCacheDir());SaveEngine.copyVerified(backup(),target(uri),check);
+-            backup().delete();backupName().delete();String n=name(uri);
+-            runOnUiThread(()->{setBusy(false,"元データを保存しました："+n);new AlertDialog.Builder(this).setTitle("元データを保存しました")
+-                .setMessage(n+"\n\n編集を続ける場合は、保存した元の曲を選び直してください。")
+-                .setPositiveButton("OK",null).show();});
+-        }catch(Exception e){try{DocumentsContract.deleteDocument(getContentResolver(),uri);}catch(Exception ignored){}runOnUiThread(()->{setBusy(false,"元データは引き続き保管しています");error(e);});}
+-        finally{if(check!=null)check.delete();}});
++        startDocumentOperation(new DocumentOperation(this,uri,false,true,editorState()));
+     }
+     private void error(Throwable e){if(isFinishing()||isDestroyed())return;String message=e.getMessage();if(message==null||message.isEmpty())message="処理できませんでした。ファイルを選び直してください。";new AlertDialog.Builder(this).setTitle("処理できませんでした").setMessage(message).setPositiveButton("OK",null).show();}
+     @Override public void onBackPressed(){if(busy){Toast.makeText(this,"処理が完了するまでお待ちください",Toast.LENGTH_SHORT).show();return;}if(dirty&&song!=null)new AlertDialog.Builder(this).setTitle("編集を終了しますか？").setMessage("保存していない変更は破棄されます。").setNegativeButton("編集を続ける",null).setPositiveButton("終了",(d,w)->finish()).show();else super.onBackPressed();}
+-    @Override protected void onSaveInstanceState(Bundle b){super.onSaveInstanceState(b);if(source!=null){b.putString("source",source.getAbsolutePath());b.putString("name",displayName);if(sourceUri!=null)b.putString("sourceUri",sourceUri.toString());b.putBoolean("sourceWritable",sourceWritable);String[] vals=new String[6];for(int i=0;i<6;i++)vals[i]=fields[i].getText().toString();b.putStringArray("values",vals);b.putBoolean("dirty",dirty);b.putString("volume",volume.getText().toString());b.putBoolean("gainChanged",gainChanged);b.putInt("mp3Steps",mp3Steps);b.putBoolean("mp3Undo",mp3Undo);b.putString("mp3Hash",mp3SourceHash);b.putBoolean("artChanged",artworkChanged);if(artworkChanged&&picture!=null){b.putString("picture",new File(getCacheDir(),"pending-cover").getAbsolutePath());b.putString("mime",picture.mime);b.putInt("width",picture.width);b.putInt("height",picture.height);}}}
++    @Override protected void onSaveInstanceState(Bundle b){if(documentOperation!=null)documentOperation.detach(this);super.onSaveInstanceState(b);if(source!=null){b.putString("source",source.getAbsolutePath());b.putString("name",displayName);if(sourceUri!=null)b.putString("sourceUri",sourceUri.toString());b.putBoolean("sourceWritable",sourceWritable);String[] vals=new String[6];for(int i=0;i<6;i++)vals[i]=fields[i].getText().toString();b.putStringArray("values",vals);b.putBoolean("dirty",dirty);b.putString("volume",volume.getText().toString());b.putBoolean("gainChanged",gainChanged);b.putInt("mp3Steps",mp3Steps);b.putBoolean("mp3Undo",mp3Undo);b.putString("mp3Hash",mp3SourceHash);b.putBoolean("artChanged",artworkChanged);if(artworkChanged&&picture!=null){b.putString("picture",new File(getCacheDir(),"pending-cover").getAbsolutePath());b.putString("mime",picture.mime);b.putInt("width",picture.width);b.putInt("height",picture.height);}}}
++    @Override public Object onRetainNonConfigurationInstance(){if(documentOperation!=null)documentOperation.detach(this);return documentOperation;}
++    @Override protected void onResume(){super.onResume();resumed=true;if(documentOperation!=null)documentOperation.attach(this);}
++    @Override protected void onPause(){resumed=false;if(documentOperation!=null)documentOperation.detach(this);super.onPause();}
+     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c); // Keep edits during rotation and theme changes. Refresh colors on next launch.
+     }
+-    @Override protected void onDestroy(){super.onDestroy();worker.shutdown();}
++    @Override protected void onDestroy(){if(documentOperation!=null)documentOperation.detach(this);super.onDestroy();worker.shutdown();}
+ }
+diff --git a/tests/android/README.md b/tests/android/README.md
+new file mode 100644
+index 0000000..0a3d261
+--- /dev/null
++++ b/tests/android/README.md
+@@ -0,0 +1,15 @@
++# Android画面と保存の回帰テスト
++
++JDK 17以上、Maven 3.9以上、Android SDK Platform 35・Build Tools 35.0.0を用意してください。
++`ANDROID_SDK_ROOT` を設定し、プロジェクトのルートで実行します。
++
++```sh
++bash build-apk.sh
++mvn -f tests/android/pom.xml test
++```
++
++RobolectricでAndroid API 26と35を模擬し、各11ケースを実行します。曲カードの操作、保存中の画面再生成、連続した再生成、状態保存直後の完了、再開時の結果反映、続けて上書き保存、保存失敗時の編集維持、コピー保存、元データの取り出しを確認します。エミュレーターは不要です。
++
++`tone.mp3` はテスト用にFFmpegで生成した短い997 Hzの正弦波です。保存先はContentResolverに登録したローカルストリームで模擬しています。端末固有のSAFプロバイダーやMediaCodecの実機検証は含みません。
++
++プロキシが必要な環境では、Mavenのsettings.xmlにプロキシを指定し、Robolectricの依存取得にも `-Dhttps.proxyHost=... -Dhttps.proxyPort=...` を指定してください。
+diff --git a/tests/android/pom.xml b/tests/android/pom.xml
+new file mode 100644
+index 0000000..7db299a
+--- /dev/null
++++ b/tests/android/pom.xml
+@@ -0,0 +1,42 @@
++<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
++  <modelVersion>4.0.0</modelVersion>
++  <groupId>jp.dengaku</groupId><artifactId>dentag-activity-tests</artifactId><version>1.1.1</version>
++  <properties>
++    <maven.compiler.source>8</maven.compiler.source><maven.compiler.target>8</maven.compiler.target>
++    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
++    <dentag.project>${project.basedir}/../..</dentag.project>
++    <android.sdk>${env.ANDROID_SDK_ROOT}</android.sdk>
++  </properties>
++  <repositories><repository><id>google</id><url>https://dl.google.com/dl/android/maven2/</url></repository></repositories>
++  <dependencies>
++    <dependency><groupId>android</groupId><artifactId>sdk-local</artifactId><version>35</version><scope>system</scope><systemPath>${android.sdk}/platforms/android-35/android.jar</systemPath></dependency>
++    <dependency><groupId>junit</groupId><artifactId>junit</artifactId><version>4.13.2</version><scope>test</scope></dependency>
++    <dependency><groupId>org.robolectric</groupId><artifactId>robolectric</artifactId><version>4.14.1</version><scope>test</scope></dependency>
++  </dependencies>
++  <build>
++    <sourceDirectory>${dentag.project}/src</sourceDirectory>
++    <plugins>
++      <plugin><groupId>org.codehaus.mojo</groupId><artifactId>build-helper-maven-plugin</artifactId><version>3.6.0</version><executions><execution><phase>generate-sources</phase><goals><goal>add-source</goal></goals><configuration><sources><source>${dentag.project}/build/generated</source></sources></configuration></execution></executions></plugin>
++      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><version>3.13.0</version></plugin>
++      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-dependency-plugin</artifactId><version>3.8.1</version><executions><execution><phase>process-test-classes</phase><goals><goal>copy</goal></goals><configuration><artifactItems>
++        <artifactItem><groupId>androidx.test</groupId><artifactId>monitor</artifactId><version>1.7.2</version><type>aar</type><outputDirectory>${project.build.directory}/aars</outputDirectory><destFileName>monitor.aar</destFileName></artifactItem>
++        <artifactItem><groupId>androidx.test.espresso</groupId><artifactId>espresso-idling-resource</artifactId><version>3.6.1</version><type>aar</type><outputDirectory>${project.build.directory}/aars</outputDirectory><destFileName>espresso.aar</destFileName></artifactItem>
++      </artifactItems></configuration></execution></executions></plugin>
++      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-antrun-plugin</artifactId><version>3.1.0</version><executions><execution><phase>process-test-classes</phase><goals><goal>run</goal></goals><configuration><target>
++        <unzip src="${project.build.directory}/aars/monitor.aar" dest="${project.build.directory}/monitor"/>
++        <unzip src="${project.build.directory}/aars/espresso.aar" dest="${project.build.directory}/espresso"/>
++        <mkdir dir="${project.build.testOutputDirectory}/com/android/tools"/>
++        <echo file="${project.build.testOutputDirectory}/com/android/tools/test_config.properties">android_merged_manifest=${dentag.project}/AndroidManifest.xml
++android_merged_resources=${dentag.project}/res
++android_merged_assets=${dentag.project}/assets
++android_resource_apk=${dentag.project}/build/unsigned.apk
++android_custom_package=jp.dengaku.dentag</echo>
++      </target></configuration></execution></executions></plugin>
++      <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version><configuration>
++        <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
++        <additionalClasspathElements><additionalClasspathElement>${project.build.directory}/monitor/classes.jar</additionalClasspathElement><additionalClasspathElement>${project.build.directory}/espresso/classes.jar</additionalClasspathElement></additionalClasspathElements>
++        <systemPropertyVariables><robolectric.dependency.repo.url>https://repo.maven.apache.org/maven2</robolectric.dependency.repo.url></systemPropertyVariables>
++      </configuration></plugin>
++    </plugins>
++  </build>
++</project>
+diff --git a/tests/android/src/test/java/jp/dengaku/dentag/ActivityLifecycleTest.java b/tests/android/src/test/java/jp/dengaku/dentag/ActivityLifecycleTest.java
+new file mode 100644
+index 0000000..9ea03f6
+--- /dev/null
++++ b/tests/android/src/test/java/jp/dengaku/dentag/ActivityLifecycleTest.java
+@@ -0,0 +1,206 @@
++package jp.dengaku.dentag;
++
++import android.app.AlertDialog;
++import android.content.*;
++import android.database.*;
++import android.net.Uri;
++import android.os.*;
++import android.provider.OpenableColumns;
++import android.view.View;
++import android.widget.*;
++import java.io.*;
++import java.lang.reflect.*;
++import java.nio.file.Files;
++import java.util.*;
++import java.util.concurrent.*;
++import org.junit.*;
++import org.junit.runner.RunWith;
++import org.robolectric.*;
++import org.robolectric.android.controller.ActivityController;
++import org.robolectric.annotation.*;
++import org.robolectric.shadows.*;
++import org.robolectric.util.ReflectionHelpers;
++import static org.junit.Assert.*;
++import static org.robolectric.Shadows.shadowOf;
++
++@RunWith(RobolectricTestRunner.class)
++@Config(sdk={26,35})
++@LooperMode(LooperMode.Mode.PAUSED)
++@GraphicsMode(GraphicsMode.Mode.LEGACY)
++public class ActivityLifecycleTest {
++    private ActivityController<MainActivity> controller;
++    private MainActivity activity;
++
++    @Before public void create(){controller=Robolectric.buildActivity(MainActivity.class).setup();activity=controller.get();}
++    @After public void destroy(){if(!activity.isDestroyed())controller.pause().stop().destroy();}
++    private void invoke(String name,Class<?>[] types,Object... args) throws Exception {Method m=MainActivity.class.getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(activity,args);}
++    private View picker(){return ReflectionHelpers.getField(activity,"songPicker");}
++
++    @Test public void emptySongCardOpensPicker(){
++        assertTrue(picker().isEnabled());
++        picker().performClick();
++        assertEquals(Intent.ACTION_OPEN_DOCUMENT,shadowOf(activity).getNextStartedActivityForResult().intent.getAction());
++    }
++    @Test public void busySongCardCannotStartAnotherPicker() throws Exception {
++        invoke("setBusy",new Class<?>[]{boolean.class,String.class},true,"busy");
++        assertFalse(picker().isEnabled());picker().performClick();
++        assertNull(shadowOf(activity).getNextStartedActivityForResult());
++    }
++    @Test public void dirtySongCardPreservesCancelConfirmation(){
++        ReflectionHelpers.setField(activity,"song",new TagEngine.Song());
++        ReflectionHelpers.setField(activity,"dirty",true);
++        picker().performClick();
++        AlertDialog dialog=ShadowAlertDialog.getLatestAlertDialog();
++        assertNotNull(dialog);assertTrue(dialog.isShowing());
++        assertNull(shadowOf(activity).getNextStartedActivityForResult());
++        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
++        assertNull(shadowOf(activity).getNextStartedActivityForResult());
++    }
++
++    static final class QueuedExecutor extends AbstractExecutorService {
++        private final Queue<Runnable> tasks=new ArrayDeque<>();private boolean shutdown;
++        public void execute(Runnable r){if(shutdown)throw new RejectedExecutionException();tasks.add(r);}
++        public void shutdown(){shutdown=true;}
++        public List<Runnable> shutdownNow(){shutdown=true;List<Runnable> out=new ArrayList<>(tasks);tasks.clear();return out;}
++        public boolean isShutdown(){return shutdown;}
++        public boolean isTerminated(){return shutdown&&tasks.isEmpty();}
++        public boolean awaitTermination(long time,TimeUnit unit){return isTerminated();}
++        void runPending() throws Exception {Runnable r=tasks.remove();Thread t=new Thread(r,"review-save-worker");t.start();t.join(10000);assertFalse("Save worker did not complete",t.isAlive());}
++    }
++    public static final class FileProvider extends ContentProvider {
++        final File file;
++        FileProvider(File file){this.file=file;}
++        public boolean onCreate(){return true;}
++        public String getType(Uri uri){return "audio/mpeg";}
++        public Cursor query(Uri uri,String[] projection,String selection,String[] args,String sort){MatrixCursor c=new MatrixCursor(new String[]{OpenableColumns.DISPLAY_NAME});c.addRow(new Object[]{"tone.mp3"});return c;}
++        public Uri insert(Uri uri,ContentValues values){throw new UnsupportedOperationException();}
++        public int update(Uri uri,ContentValues values,String s,String[] a){throw new UnsupportedOperationException();}
++        public int delete(Uri uri,String s,String[] a){throw new UnsupportedOperationException();}
++        @Override public ParcelFileDescriptor openFile(Uri uri,String mode) throws FileNotFoundException {return ParcelFileDescriptor.open(file,mode.contains("w")?ParcelFileDescriptor.MODE_WRITE_ONLY|ParcelFileDescriptor.MODE_TRUNCATE:ParcelFileDescriptor.MODE_READ_ONLY);}
++    }
++    private File saveTarget;
++    private Uri documentUri;
++    private byte[] originalBytes;
++    private QueuedExecutor replaceWorker(){
++        ExecutorService previous=ReflectionHelpers.getField(activity,"worker");previous.shutdown();
++        QueuedExecutor executor=new QueuedExecutor();ReflectionHelpers.setField(activity,"worker",executor);return executor;
++    }
++    private void registerTarget(Uri uri,File target){
++        FileProvider provider=new FileProvider(target);provider.attachInfo(activity,new android.content.pm.ProviderInfo());
++        ShadowContentResolver.registerProviderInternal(uri.getAuthority(),provider);
++        for(ContentResolver contentResolver:new ContentResolver[]{activity.getContentResolver(),activity.getApplicationContext().getContentResolver()}){
++            ShadowContentResolver resolver=shadowOf(contentResolver);
++            resolver.registerInputStreamSupplier(uri,()->{try{return new FileInputStream(target);}catch(IOException e){throw new UncheckedIOException(e);}});
++            resolver.registerOutputStreamSupplier(uri,()->{try{return new FileOutputStream(target);}catch(IOException e){throw new UncheckedIOException(e);}});
++        }
++    }
++    private QueuedExecutor queueSave() throws Exception {
++        return queueSave(true);
++    }
++    private QueuedExecutor queueSave(boolean overwrite) throws Exception {
++        File opened=new File(activity.getCacheDir(),"review-opened.mp3");
++        File target=new File(activity.getFilesDir(),"review-document.mp3");
++        saveTarget=target;
++        byte[] bytes=Files.readAllBytes(new File(ActivityLifecycleTest.class.getResource("/tone.mp3").toURI()).toPath());
++        originalBytes=bytes;
++        Files.write(opened.toPath(),bytes);Files.write(target.toPath(),bytes);
++        Uri uri=Uri.parse("content://review/document/tone");
++        documentUri=uri;registerTarget(uri,target);
++        ReflectionHelpers.setField(activity,"source",opened);
++        ReflectionHelpers.setField(activity,"song",TagEngine.read(opened));
++        ReflectionHelpers.setField(activity,"displayName","tone.mp3");
++        Uri sourceUri=overwrite?uri:Uri.parse("content://review/document/original");
++        if(!overwrite){File original=new File(activity.getFilesDir(),"original.mp3");Files.write(original.toPath(),bytes);registerTarget(sourceUri,original);}
++        ReflectionHelpers.setField(activity,"sourceUri",sourceUri);
++        ReflectionHelpers.setField(activity,"sourceWritable",true);
++        invoke("fill",new Class<?>[0]);
++        EditText[] fields=ReflectionHelpers.getField(activity,"fields");fields[0].setText("Edited title");
++        QueuedExecutor executor=replaceWorker();
++        invoke("export",new Class<?>[]{Uri.class,boolean.class},uri,overwrite);
++        return executor;
++    }
++    @Test public void destroyedActivityMustNotShowSaveDialog() throws Exception {
++        QueuedExecutor executor=queueSave();
++        controller.pause().stop().destroy();assertTrue(activity.isDestroyed());
++        executor.runPending();
++        shadowOf(Looper.getMainLooper()).idle();
++        TextView status=ReflectionHelpers.getField(activity,"status");
++        assertEquals("Save status: "+status.getText(),"Edited title",TagEngine.read(saveTarget).values[0]);
++        assertNull("A save callback must not create a dialog for a destroyed Activity",ShadowAlertDialog.getLatestAlertDialog());
++    }
++    @Test public void recreatedEditorMustKeepItsWorkingFileWhenOldSaveCompletes() throws Exception {
++        QueuedExecutor executor=queueSave();
++        MainActivity old=activity;controller.recreate();activity=controller.get();assertTrue(old.isDestroyed());
++        assertTrue(ReflectionHelpers.<Boolean>getField(activity,"busy"));assertFalse(picker().isEnabled());
++        executor.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertEquals("Edited title",TagEngine.read(saveTarget).values[0]);
++        File liveSource=ReflectionHelpers.getField(activity,"source");
++        assertTrue("Recreated editor must have a readable working file",liveSource.isFile());
++        assertArrayEquals(Files.readAllBytes(saveTarget.toPath()),Files.readAllBytes(liveSource.toPath()));
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"dirty"));
++        // A second overwrite proves that the editor adopted the saved version, rather than a stale cache file.
++        EditText[] fields=ReflectionHelpers.getField(activity,"fields");fields[0].setText("Second save");
++        QueuedExecutor next=replaceWorker();invoke("export",new Class<?>[]{Uri.class,boolean.class},documentUri,true);
++        next.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertEquals("Second save",TagEngine.read(saveTarget).values[0]);
++    }
++    @Test public void completionBetweenStateSaveAndRecreationIsDeliveredToNewScreen() throws Exception {
++        QueuedExecutor executor=queueSave();File original=ReflectionHelpers.getField(activity,"source");
++        Bundle state=new Bundle();controller.saveInstanceState(state);
++        executor.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertTrue("Saved state still references this working file",original.isFile());
++        assertNull(ShadowAlertDialog.getLatestAlertDialog());
++        Object retained=activity.onRetainNonConfigurationInstance();controller.pause().stop().destroy();
++        controller=Robolectric.buildActivity(MainActivity.class);activity=controller.get();
++        shadowOf(activity).setLastNonConfigurationInstance(retained);controller.setup(state);
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertEquals("Edited title",ReflectionHelpers.<EditText[]>getField(activity,"fields")[0].getText().toString());
++        assertEquals("Edited title",TagEngine.read(ReflectionHelpers.<File>getField(activity,"source")).values[0]);
++    }
++    @Test public void repeatedRecreationRetainsOnlyOneSave() throws Exception {
++        QueuedExecutor executor=queueSave();controller.recreate().recreate();activity=controller.get();
++        executor.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertEquals("Edited title",TagEngine.read(ReflectionHelpers.<File>getField(activity,"source")).values[0]);
++        assertEquals("Edited title",TagEngine.read(saveTarget).values[0]);
++    }
++    @Test public void saveFailureAfterRecreationKeepsEditsAndOriginalWorkingFile() throws Exception {
++        QueuedExecutor executor=queueSave();
++        byte[] external=Arrays.copyOf(originalBytes,originalBytes.length+1);external[external.length-1]=42;
++        Files.write(saveTarget.toPath(),external);
++        controller.recreate();activity=controller.get();executor.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertArrayEquals(external,Files.readAllBytes(saveTarget.toPath()));
++        assertTrue(ReflectionHelpers.<File>getField(activity,"source").isFile());
++        assertTrue(ReflectionHelpers.<Boolean>getField(activity,"dirty"));assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertEquals("Edited title",ReflectionHelpers.<EditText[]>getField(activity,"fields")[0].getText().toString());
++    }
++    @Test public void recoverySurvivesRecreationAndWritesOriginalBytes() throws Exception {
++        byte[] bytes=Files.readAllBytes(new File(ActivityLifecycleTest.class.getResource("/tone.mp3").toURI()).toPath());
++        File backup=new File(activity.getFilesDir(),"overwrite-original.bin");Files.write(backup.toPath(),bytes);
++        File target=new File(activity.getFilesDir(),"recovered.mp3");Files.write(target.toPath(),new byte[0]);
++        Uri uri=Uri.parse("content://review/document/recovered");registerTarget(uri,target);
++        QueuedExecutor executor=replaceWorker();invoke("recover",new Class<?>[]{Uri.class},uri);
++        controller.recreate();activity=controller.get();executor.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertArrayEquals(bytes,Files.readAllBytes(target.toPath()));assertFalse(backup.exists());
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertNotNull(ShadowAlertDialog.getLatestAlertDialog());
++    }
++    @Test public void copySaveSurvivesRecreationAndPreservesWorkingAudio() throws Exception {
++        QueuedExecutor executor=queueSave(false);File original=ReflectionHelpers.getField(activity,"source");
++        controller.recreate();activity=controller.get();executor.runPending();shadowOf(Looper.getMainLooper()).idle();
++        assertEquals("Edited title",TagEngine.read(saveTarget).values[0]);
++        assertArrayEquals(originalBytes,Files.readAllBytes(original.toPath()));
++        assertEquals(original,ReflectionHelpers.<File>getField(activity,"source"));
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"dirty"));
++    }
++    @Test public void completionWhileBackgroundedWaitsUntilResume() throws Exception {
++        QueuedExecutor executor=queueSave();controller.pause().stop();
++        executor.runPending();shadowOf(Looper.getMainLooper()).idle();assertNull(ShadowAlertDialog.getLatestAlertDialog());
++        controller.restart().start().resume();
++        assertFalse(ReflectionHelpers.<Boolean>getField(activity,"busy"));
++        assertEquals("Edited title",TagEngine.read(ReflectionHelpers.<File>getField(activity,"source")).values[0]);
++        assertNotNull(ShadowAlertDialog.getLatestAlertDialog());
++    }
++}
+diff --git a/tests/android/src/test/resources/tone.mp3 b/tests/android/src/test/resources/tone.mp3
+new file mode 100644
+index 0000000000000000000000000000000000000000..9af564e5c80c927965877f02d3da4d51842c0c03
+GIT binary patch
+literal 2106
+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
+bKn20@^@p^>z2#Ph)+QRe|1+ih|HXd*|8L(x
+
+literal 0
+HcmV?d00001
+

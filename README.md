@@ -2,14 +2,18 @@
 
 Android向けのMP3・FLACタグ編集アプリの配布用リポジトリです。
 
-最新バージョン：**v1.1.0 UI更新版**
+最新バージョン：**v1.1.1**
 
-- [UI更新版APKをダウンロード](https://github.com/denngaku-chan/DenTag-Release/releases/download/v1.1.0-ui/DenTag-v1.1.0-ui.apk)
-- [UI更新版の公開用ソース](https://github.com/denngaku-chan/DenTag-Release/releases/download/v1.1.0-ui/DenTag-v1.1.0-ui-source-public.zip)
-- [変更点・検証結果](releases/v1.1.0-ui/release-notes.md)
+- [v1.1.1 APKをダウンロード](https://github.com/denngaku-chan/DenTag-Release/releases/download/v1.1.1/DenTag-v1.1.1.apk)
+- [v1.1.1の公開用ソース](https://github.com/denngaku-chan/DenTag-Release/releases/download/v1.1.1/DenTag-v1.1.1-source-public.zip)
+- [変更点・検証結果](releases/v1.1.1/release-notes.md)
 - [公開済みRelease一覧](https://github.com/denngaku-chan/DenTag-Release/releases)
 
 曲名・アーティスト・アルバム名・トラック番号・発売年・ジャンルとジャケット画像を編集できます。保存時は「元の曲に上書き」と「編集したコピーを保存」を選べます。Android 8.0以上に対応しています。既存版と同じ署名のため、上書きインストールできます。
+
+## v1.1.1の修正
+
+保存中にフォントサイズ変更などで画面が再生成されても、保存結果を引き継いで編集・保存を続けられます。破棄済み画面への完了ダイアログ表示と、再生成した画面が使う作業ファイルの削除を防ぎました。コピー保存と元データの取り出しにも対応しています。
 
 ## UI更新
 
@@ -25,4 +29,4 @@ ReplayGainも独立した機能として残しています。曲ごとの音量�
 
 ReplayGainの編集だけでは音声データを変更しません。対応プレーヤーでReplayGainを有効にし、曲単位（トラック）を選んでください。
 
-公開用ソースには署名鍵を含めていません。
+公開用ソースには署名鍵を含めていません。既存の処理系232ケースと、Android API 26・35の画面・保存テスト22ケースを検証しています。実機での表示・MediaCodec解析・SAF保存は未確認です。

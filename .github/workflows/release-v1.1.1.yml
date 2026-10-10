@@ -1,0 +1,66 @@
+name: Publish DenTag v1.1.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'releases/v1.1.1/**'
+      - '.github/workflows/release-v1.1.1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dentag-v1.1.1-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ASSET_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Download and verify the prepared release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir v1.1.1
+          assets=(DenTag-v1.1.1.apk DenTag-v1.1.1-source-public.zip save-lifecycle-fix.patch validation.json SHA256SUMS release-notes.md)
+          for asset in "${assets[@]}"; do
+            gh api --method GET "repos/$GH_REPO/contents/releases/v1.1.1/$asset" -f ref="$ASSET_COMMIT" --jq '.content' | base64 --decode > "v1.1.1/$asset"
+          done
+          (cd v1.1.1 && sha256sum --check SHA256SUMS)
+          python3 - <<'PY'
+          import json, zipfile
+          from pathlib import Path
+          checks = json.loads(Path('v1.1.1/validation.json').read_text())
+          assert checks['processing_tests_passed'] == 232
+          assert checks['activity_tests_passed'] == 22
+          assert checks['version_name'] == '1.1.1' and checks['version_code'] == 5
+          with zipfile.ZipFile('v1.1.1/DenTag-v1.1.1-source-public.zip') as archive:
+              assert archive.testzip() is None
+              assert not any(
+                  name.lower().endswith(('.keystore', '.jks'))
+                  or '/signing/' in name.lower()
+                  or '.dentag-signing' in name.lower()
+                  for name in archive.namelist()
+              )
+          PY
+      - name: Publish v1.1.1 and mark it Latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v1.1.1 --repo "$GH_REPO" --json isDraft --jq '.isDraft' > draft-state.txt 2>/dev/null; then
+            if [ "$(cat draft-state.txt)" = false ]; then
+              echo 'v1.1.1 is already published.'
+              exit 0
+            fi
+          else
+            gh release create v1.1.1 --repo "$GH_REPO" --draft --target "$ASSET_COMMIT" --title 'DenTag v1.1.1 — 保存時の画面再生成を修正' --notes-file v1.1.1/release-notes.md
+          fi
+          gh release upload v1.1.1 v1.1.1/DenTag-v1.1.1.apk v1.1.1/DenTag-v1.1.1-source-public.zip v1.1.1/save-lifecycle-fix.patch v1.1.1/validation.json v1.1.1/SHA256SUMS --repo "$GH_REPO" --clobber
+          gh release edit v1.1.1 --repo "$GH_REPO" --draft=false --prerelease=false --latest=true

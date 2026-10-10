@@ -1,0 +1,26 @@
+{
+  "version_name": "1.1.1",
+  "version_code": 5,
+  "min_sdk": 26,
+  "target_sdk": 35,
+  "processing_tests_passed": 232,
+  "processing_test_counts": {
+    "test-results.json": 24,
+    "gain-test-results.json": 39,
+    "mp3gain-test-results.json": 156,
+    "SaveHarness": 13
+  },
+  "activity_tests_passed": 22,
+  "activity_test_apis": [
+    26,
+    35
+  ],
+  "apk_signatures_verified": [
+    "v2",
+    "v3"
+  ],
+  "signer_certificate_sha256": "5c7d2fa112064d97cd511120f3c8763c2b062bea285c1faf831212aa51ed0fdd",
+  "apk_sha256": "5ba0402e7e28917c96ea460fe1224259fa90454c5961f01c78fa3b451957ac1b",
+  "source_archive_sha256": "cf6d6a92edce410de348d9414899a911f1ca625055c4aee07b1db92b58604008",
+  "physical_device_tests_run": false
+}
