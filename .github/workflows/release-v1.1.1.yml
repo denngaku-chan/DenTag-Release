@@ -56,11 +56,12 @@ jobs:
           set -euo pipefail
           if gh release view v1.1.1 --repo "$GH_REPO" --json isDraft --jq '.isDraft' > draft-state.txt 2>/dev/null; then
             if [ "$(cat draft-state.txt)" = false ]; then
+              gh release upload v1.1.1 v1.1.1/release-notes.md --repo "$GH_REPO" --clobber
               echo 'v1.1.1 is already published.'
               exit 0
             fi
           else
             gh release create v1.1.1 --repo "$GH_REPO" --draft --target "$ASSET_COMMIT" --title 'DenTag v1.1.1 — 保存時の画面再生成を修正' --notes-file v1.1.1/release-notes.md
           fi
-          gh release upload v1.1.1 v1.1.1/DenTag-v1.1.1.apk v1.1.1/DenTag-v1.1.1-source-public.zip v1.1.1/save-lifecycle-fix.patch v1.1.1/validation.json v1.1.1/SHA256SUMS --repo "$GH_REPO" --clobber
+          gh release upload v1.1.1 v1.1.1/DenTag-v1.1.1.apk v1.1.1/DenTag-v1.1.1-source-public.zip v1.1.1/save-lifecycle-fix.patch v1.1.1/validation.json v1.1.1/SHA256SUMS v1.1.1/release-notes.md --repo "$GH_REPO" --clobber
           gh release edit v1.1.1 --repo "$GH_REPO" --draft=false --prerelease=false --latest=true
